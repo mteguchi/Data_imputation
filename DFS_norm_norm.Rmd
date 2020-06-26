@@ -1,0 +1,84 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+Trying to run discrete Fourier series data imputation models using stan. 
+
+Set up the workspace
+```{r}
+
+library(tidyverse)
+library(rstan)
+
+source("Data_Imputation_funcs.R")    
+
+n.cores <- parallel::detectCores()
+MCMC.setup <- list(warmup = 5000,
+                   iter = 10000,
+                   chains = ifelse(n.cores < 5, n.cores, 5))
+
+```
+
+
+Bring in the data. First, I just use JM data.
+
+```{r}
+
+all.years <- 2001:2017
+idx <- 1:length(all.years)
+
+year.begin.JM <- 2001
+year.end <- 2017
+data.JM <- data.extract(location = "JM", 
+                        year.begin = year.begin.JM, 
+                        year.end = year.end)
+
+JM.keep <- 2001:2017
+idx.JM <- idx[all.years %in% JM.keep]
+n.keep.JM <- length(idx.JM)
+dt.JM <- idx.JM[2:length(idx.JM)] - idx.JM[1:(length(idx.JM)-1)]
+
+y <- as.vector(t(data.JM$jags.data2$y))
+n.years <- 17
+n.months <- 12
+period_1 <- 12
+c.const <-  2 * pi * c(1:12) / period_1
+
+data_list <- list(n_months = 12, 
+                  n_years = n.years,
+                  years = rep(2001:2017, each = 12),
+                  period_1 = 12, 
+                  m = rep(1:12, times = n.years),
+                  N_obs = sum(!is.na(y)),
+                  N_miss = sum(is.na(y)),
+                  idx_obs = which(!is.na(y)),
+                  idx_miss = which(is.na(y)),
+                  y_obs = y[which(!is.na(y))],
+                  y_miss = y[which(is.na(y))],
+                  c_const = c.const)
+
+```
+
+
+Then run stan
+```{r}
+
+mod.out <- stan("models/Model_DFS_norm_norm.stan", 
+                data=data_list, 
+                chains = MCMC.setup$chains, 
+                warmup = MCMC.setup$warmup,
+                iter = MCMC.setup$iter,
+                cores = getOption("mc.cores", MCMC.setup$chains),
+                control = list(adapt_delta = 0.99))
+
+```
+
+Extract the log-likelihood and run the loo.
+```{r}
+log_lik <- extract_log_lik(mod, 
+                           merge_chains = FALSE)
+rel_n_eff <- relative_eff(exp(log_lik))
+loo(log_lik, r_eff = rel_n_eff, cores = 4)
+```
+

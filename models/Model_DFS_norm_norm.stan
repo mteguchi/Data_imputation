@@ -31,13 +31,13 @@ transformed data {
 }
 
 parameters {
-  real<lower = 0.0> y_miss[N_miss];
+  real<lower = 0> y_miss[N_miss];
   
-  real<lower = 0> predX0;
+  real predX0;
   real predX[N];
-  real<lower = 0.0> X[N];
+  real X[N];
   
-  real<lower=0> c[n_months];
+  //real<lower=0> c[n_months];
   real beta_cos;
   real beta_sin;
   real<lower=0> sigma_X;
@@ -47,7 +47,7 @@ parameters {
 
 transformed parameters {
   
-  real<lower = 0.0> y[N];
+  real<lower = 0> y[N];
   y[idx_obs] = y_obs;
   y[idx_miss] = y_miss;
 

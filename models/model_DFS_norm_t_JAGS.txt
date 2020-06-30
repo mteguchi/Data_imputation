@@ -1,0 +1,32 @@
+# JAGS model for imputing missing nest counts at Indonesia nesting beaches
+
+model{
+    # Initial states
+    predX0 ~ dnorm(8, 0.1)
+    #X[1] ~ dnorm(c[m[1]] + predX0[j], tau.X)
+    X[1] ~ dnorm(beta_cos * cos(c_const[m[1]]) + beta_sin * sin(c_const[m[1]]) + predX0, tau.X)
+    # observation
+    y[1] ~  dt(X[1], tau.y, df)
+
+    loglik[1] <- logdensity.norm(y[1], X[1], tau.X)
+    
+    for (t in 2:T){
+        #X[t] ~ dnorm(c[m[t]] + X[t-1], tau.X)
+        X[t] ~ dnorm(beta_cos * cos(c_const[m[t]]) + beta_sin * sin(c_const[m[1]]) + X[t-1], tau.X)
+        # observation
+        y[t] ~  dt(X[t], tau.y, df)
+        loglik[t] <- logdensity.t(y[t], X[t], tau.y, df)
+                
+    }
+       
+    sigma.y ~ dgamma(2, 0.5)
+    tau.y <- 1/(sigma.y * sigma.y)
+    beta_cos ~ dnorm(0, 1)
+    beta_sin ~ dnorm(0, 1)
+    
+    df ~ dgamma(5, 0.1)T(2,) 
+
+    # sigma.X is the SD of the process (X)
+    sigma.X ~ dgamma(2, 0.5)
+    tau.X <- 1/(sigma.X * sigma.X)    
+}
